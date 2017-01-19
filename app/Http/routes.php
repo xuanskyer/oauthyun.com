@@ -11,25 +11,22 @@
 |
 */
 
-$app->get('/', function () use ($app) {
+$app->get(
+    '/', function () use ($app) {
     return $app->welcome();
-});
-
-$app->post(
-    'v1/oauth/access_token',
-    function () {
-        return response()->json(app('oauth2-server.authorizer')->issueAccessToken());
-    }
+}
 );
 
-$api = app('Dingo\Api\Routing\Router');
 
-$api->version(
+$dingo_api = app('Dingo\Api\Routing\Router');
+
+//走oauth2验证的路由列表
+$dingo_api->version(
     'v1',
     ['middleware' => 'api.auth'],
-    function ($api) {
-        $api->get(
-            'users/~me', function () {
+    function ($dingo_api) {
+        $dingo_api->get(
+            'users/test', function () {
             $user = app('Dingo\Api\Auth\Auth')->user();
             return $user;
         }
@@ -37,10 +34,17 @@ $api->version(
     }
 );
 
-$api->version(
+//无需验证的路由列表
+$dingo_api->version(
     'v1', [],
-    function ($api) {
-        $api->get(
+    function ($dingo_api) {
+        $dingo_api->post(
+            'oauth/access_token',
+            function () {
+                return response()->json(app('oauth2-server.authorizer')->issueAccessToken());
+            }
+        );
+        $dingo_api->get(
             'stats',
             function () {
                 return [
