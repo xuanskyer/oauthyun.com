@@ -15,18 +15,38 @@ $app->get('/', function () use ($app) {
     return $app->welcome();
 });
 
-$app->get('/test', [
-    'uses' => 'TestController@show'
-]);
+$app->post(
+    'v1/oauth/access_token',
+    function () {
+        return response()->json(app('oauth2-server.authorizer')->issueAccessToken());
+    }
+);
 
-$app->get('/user/{id}', [
-    'uses' => 'TestController@getUserInfo'
-]);
+$api = app('Dingo\Api\Routing\Router');
 
-$app->get('oauth/access_token/{client_id}/{client_secret}/{grant_type}', [
-    'uses' => 'OauthController@access_token'
-]);
+$api->version(
+    'v1',
+    ['middleware' => 'api.auth'],
+    function ($api) {
+        $api->get(
+            'users/~me', function () {
+            $user = app('Dingo\Api\Auth\Auth')->user();
+            return $user;
+        }
+        );
+    }
+);
 
-$app->post('oauth/access_token', [
-    'uses' => 'OauthController@access_token'
-]);
+$api->version(
+    'v1', [],
+    function ($api) {
+        $api->get(
+            'stats',
+            function () {
+                return [
+                    'stats' => 'dingo api is ok'
+                ];
+            }
+        );
+    }
+);

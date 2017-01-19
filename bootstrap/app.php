@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__.'/../vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
 // Dotenv::load(__DIR__.'/../');
 
@@ -16,13 +16,19 @@ require_once __DIR__.'/../vendor/autoload.php';
 */
 
 $app = new Laravel\Lumen\Application(
-    realpath(__DIR__.'/../')
+    realpath(__DIR__ . '/../')
 );
 
- $app->withFacades();
+
+$app->configure('app');
+$app->configure('database');
+$app->configure('api');
+$app->configure('oauth2');
+
+$app->withFacades();
 
 //开启Eloquent ORM
- $app->withEloquent();
+$app->withEloquent();
 
 /*
 |--------------------------------------------------------------------------
@@ -63,19 +69,23 @@ $app->singleton(
 //     // Illuminate\View\Middleware\ShareErrorsFromSession::class,
 //     // Laravel\Lumen\Http\Middleware\VerifyCsrfToken::class,
 // ]);
-$app->middleware([
-    \LucaDegasperi\OAuth2Server\Middleware\OAuthExceptionHandlerMiddleware::class
-]);
+$app->middleware(
+    [
+        \LucaDegasperi\OAuth2Server\Middleware\OAuthExceptionHandlerMiddleware::class
+    ]
+);
 // $app->routeMiddleware([
 
 // ]);
-$app->routeMiddleware([
-    'check-authorization-params' => \LucaDegasperi\OAuth2Server\Middleware\CheckAuthCodeRequestMiddleware::class,
-    'csrf' => \Laravel\Lumen\Http\Middleware\VerifyCsrfToken::class,
-    'oauth' => \LucaDegasperi\OAuth2Server\Middleware\OAuthMiddleware::class,
-    'oauth-client' => \LucaDegasperi\OAuth2Server\Middleware\OAuthClientOwnerMiddleware::class,
-    'oauth-user' => \LucaDegasperi\OAuth2Server\Middleware\OAuthUserOwnerMiddleware::class,
-]);
+$app->routeMiddleware(
+    [
+        'check-authorization-params' => \LucaDegasperi\OAuth2Server\Middleware\CheckAuthCodeRequestMiddleware::class,
+        'csrf'                       => \Laravel\Lumen\Http\Middleware\VerifyCsrfToken::class,
+        'oauth'                      => \LucaDegasperi\OAuth2Server\Middleware\OAuthMiddleware::class,
+        'oauth-client'               => \LucaDegasperi\OAuth2Server\Middleware\OAuthClientOwnerMiddleware::class,
+        'oauth-user'                 => \LucaDegasperi\OAuth2Server\Middleware\OAuthUserOwnerMiddleware::class,
+    ]
+);
 /*
 |--------------------------------------------------------------------------
 | Register Service Providers
@@ -89,6 +99,8 @@ $app->routeMiddleware([
 
 // $app->register(App\Providers\AppServiceProvider::class);
 // $app->register(App\Providers\EventServiceProvider::class);
+
+$app->register(Dingo\Api\Provider\LumenServiceProvider::class);
 $app->register(\LucaDegasperi\OAuth2Server\Storage\FluentStorageServiceProvider::class);
 $app->register(\LucaDegasperi\OAuth2Server\OAuth2ServerServiceProvider::class);
 /*
@@ -101,9 +113,24 @@ $app->register(\LucaDegasperi\OAuth2Server\OAuth2ServerServiceProvider::class);
 | can respond to, as well as the controllers that may handle them.
 |
 */
+app('Dingo\Api\Auth\Auth')->extend('oauth', function ($app) {
+    $provider = new Dingo\Api\Auth\Provider\OAuth2($app['oauth2-server.authorizer']->getChecker());
 
-$app->group(['namespace' => 'App\Http\Controllers'], function ($app) {
-    require __DIR__.'/../app/Http/routes.php';
+    $provider->setUserResolver(function ($id) {
+        // Logic to return a user by their ID.
+        return App\Models\User::find($id);
+    });
+
+    $provider->setClientResolver(function ($id) {
+        // Logic to return a client by their ID.
+    });
+
+    return $provider;
 });
+$app->group(
+    ['namespace' => 'App\Http\Controllers'], function ($app) {
+    require __DIR__ . '/../app/Http/routes.php';
+}
+);
 
 return $app;
