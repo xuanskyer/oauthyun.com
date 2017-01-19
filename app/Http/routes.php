@@ -44,13 +44,14 @@ $dingo_api->version(
                 return response()->json(app('oauth2-server.authorizer')->issueAccessToken());
             }
         );
-        $dingo_api->get(
-            'stats',
-            function () {
-                return [
-                    'stats' => 'dingo api is ok'
-                ];
-            }
-        );
+
+        $dingo_api->group(['namespace' => 'App\Http\Controllers'], function() use ($dingo_api) {
+            $dingo_api->get(
+                'test',
+                [
+                    'uses' => 'TestController@show'
+                ]
+            );
+        });
     }
 );
